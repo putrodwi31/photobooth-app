@@ -1,6 +1,9 @@
 import logging
 from pathlib import Path
 from uuid import uuid4
+import shutil
+import time
+import os
 
 from statemachine import Event
 
@@ -13,6 +16,63 @@ from ..mediaprocessing.processes import process_video
 from .base import Capture, CaptureSet, JobModelBase
 
 logger = logging.getLogger(__name__)
+
+def _wait_until_file_stable(path: Path, timeout_s: float = 10.0, interval_s: float = 0.2) -> None:
+    """
+    Wait until file exists and its size stops changing (useful for SMB/CIFS / slow writers).
+    """
+    deadline = time.time() + timeout_s
+    last_size = -1
+
+    while time.time() < deadline:
+        if path.is_file():
+            try:
+                size = path.stat().st_size
+            except FileNotFoundError:
+                size = -1
+
+            if size > 0 and size == last_size:
+                return
+
+            last_size = size
+
+        time.sleep(interval_s)
+
+    # Don’t hard fail here; caller can still attempt move and raise proper error.
+    # If you prefer to fail fast:
+    # raise TimeoutError(f"File not stable after {timeout_s}s: {path}")
+
+
+def move_capture_with_fallback(
+    src: Path,
+    dst: Path,
+    *,
+    wait_stable: bool = True,
+    stable_timeout_s: float = 10.0,
+) -> Path:
+    """
+    Callback/helper to move a capture file reliably on CIFS/SMB:
+    - Optionally wait until src is stable (size stops changing)
+    - Try atomic rename first
+    - Fallback to shutil.move (copy+delete) if rename fails
+    """
+    dst.parent.mkdir(parents=True, exist_ok=True)
+
+    if wait_stable:
+        _wait_until_file_stable(src, timeout_s=stable_timeout_s)
+
+    # 1) Try rename (fast/atomic when allowed)
+    try:
+        return src.rename(dst)
+    except OSError as e:
+        # 2) Fallback: copy+delete via shutil.move
+        # Common on CIFS/Windows: EXDEV (18) or permission/locking issues
+        try:
+            moved = shutil.move(str(src), str(dst))
+            return Path(moved)
+        except Exception:
+            # Re-raise original error to keep stack trace meaningful
+            raise e
 
 
 class JobModelVideo(JobModelBase[VideoConfigurationSet]):
@@ -62,7 +122,13 @@ class JobModelVideo(JobModelBase[VideoConfigurationSet]):
         original_filenamepath = Path(filename_str_time()).with_suffix(".mp4")
 
         # very first, move the capture_to_process to originals. if anything later fails, at least we got the file in safe place.
-        captured_original = capture_to_process.rename(Path(PATH_CAMERA_ORIGINAL, original_filenamepath))
+        target_original = Path(PATH_CAMERA_ORIGINAL, original_filenamepath)
+        captured_original = move_capture_with_fallback(
+            capture_to_process,
+            target_original,
+            wait_stable=True,
+            stable_timeout_s=30.0,  # video biasanya lebih lama finish write
+        )
 
         mediaitem = Mediaitem(
             id=uuid4(),
