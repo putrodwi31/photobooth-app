@@ -107,7 +107,7 @@ class DigicamcontrolBackend(AbstractBackend):
 
     def _on_configure_optimized_for_livestream_paused(self): ...
 
-    def _enable_liveview(self):
+    def _enable_liveview(self) -> bool:
         logger.debug("enable liveview and minimize windows")
         try:
             session = niquests.Session()
@@ -118,10 +118,13 @@ class DigicamcontrolBackend(AbstractBackend):
         except Exception as exc:
             logger.exception(exc)
             logger.error("fail set preview mode! no power? no connection?")
+            self._enabled_liveview = False
+            return False
         else:
             logger.debug("set preview mode successful")
 
         self._enabled_liveview = True
+        return True
 
     def setup_resource(self):
         self._enabled_liveview: bool = False
@@ -174,8 +177,13 @@ class DigicamcontrolBackend(AbstractBackend):
                                 raise RuntimeError(f"error retrieving capture, status_code {r.status_code}, text: {error_translation[r.text]}")
                             else:
                                 # at this point it's assumed that r.text holds the filename:
-                                assert r.text
-                                captured_filepath = Path(tmp_dir, r.text)
+                                captured_name = r.text.strip()
+                                assert captured_name
+                                candidate_path = Path(captured_name)
+                                if candidate_path.is_absolute():
+                                    captured_filepath = candidate_path
+                                else:
+                                    captured_filepath = Path(tmp_dir, captured_name)
                                 break  # no else below, its fine, proceed deliver image
 
                         except Exception as exc:
@@ -220,6 +228,7 @@ class DigicamcontrolBackend(AbstractBackend):
 
                     except Exception as exc:
                         preview_failcounter += 1
+                        self._enabled_liveview = False
 
                         if preview_failcounter <= 10:
                             logger.warning(f"error capturing frame from DSLR: {exc}")

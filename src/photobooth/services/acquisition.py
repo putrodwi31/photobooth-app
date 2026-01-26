@@ -54,6 +54,7 @@ class AcquisitionService(BaseService):
         self._load_ffmpeg()
 
         for backend in self._backends:
+            logger.debug(f"starting backend: {backend}")
             backend.start()
 
         super().started()
@@ -116,10 +117,12 @@ class AcquisitionService(BaseService):
             logger.warning("livestream is disabled.")
             raise ConnectionRefusedError
 
+        logger.debug(f"gen_stream start {index_device=} {index_subdevice=}")
         while self.is_running():
             try:
                 output_jpeg_bytes = self._backends[index_device].wait_for_lores_image(index_subdevice=index_subdevice)
             except StopIteration:
+                logger.debug("gen_stream stop: backend stopped")
                 return  # if backend is stopped but still requesting stream, StopIteration is sent when device is not alive any more
             except Exception as exc:
                 # this error probably cannot recover.
@@ -132,6 +135,7 @@ class AcquisitionService(BaseService):
                 time.sleep(0.5)  # rate limit if it fails
 
             yield output_jpeg_bytes
+        logger.debug("gen_stream stop: service not running")
 
     def wait_for_still_file(self):
         """

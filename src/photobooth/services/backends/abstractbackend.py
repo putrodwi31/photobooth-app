@@ -299,7 +299,7 @@ class AbstractBackend(ResilientService, ABC):
             _type_: _description_
         """
 
-        for _ in range(retries):
+        for attempt in range(1, retries + 1):
             self._last_requested_timestamp = time.monotonic()
 
             try:
@@ -308,13 +308,14 @@ class AbstractBackend(ResilientService, ABC):
                 return img
             except TimeoutError as exc:
                 if self.is_started():
+                    logger.debug(f"lores timeout {attempt=}/{retries} {index_subdevice=}")
                     continue
                 else:
                     logger.debug("device not alive any more, stopping early lores image delivery.")
                     raise StopIteration from exc
             except Exception as exc:
                 # other exceptions fail immediately
-                logger.warning("device raised exception (maybe lost connection to device?)")
+                logger.warning(f"device raised exception (maybe lost connection to device?) {exc}")
                 raise exc
 
         # max attempts reached.

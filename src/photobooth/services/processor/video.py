@@ -49,6 +49,8 @@ def move_capture_with_fallback(
     *,
     wait_stable: bool = True,
     stable_timeout_s: float = 10.0,
+    retries: int = 5,
+    retry_delay_s: float = 0.2,
 ) -> Path:
     """
     Callback/helper to move a capture file reliably on CIFS/SMB:
@@ -61,18 +63,19 @@ def move_capture_with_fallback(
     if wait_stable:
         _wait_until_file_stable(src, timeout_s=stable_timeout_s)
 
-    # 1) Try rename (fast/atomic when allowed)
-    try:
-        return src.rename(dst)
-    except OSError as e:
-        # 2) Fallback: copy+delete via shutil.move
-        # Common on CIFS/Windows: EXDEV (18) or permission/locking issues
+    last_exc: Exception | None = None
+
+    # copy+delete via shutil.move (CIFS/Windows friendly)
+    for attempt in range(retries):
         try:
             moved = shutil.move(str(src), str(dst))
             return Path(moved)
-        except Exception:
-            # Re-raise original error to keep stack trace meaningful
-            raise e
+        except Exception as exc:
+            last_exc = exc
+            if attempt < retries - 1:
+                time.sleep(retry_delay_s)
+
+    raise RuntimeError(f"failed to move capture from {src} to {dst}") from last_exc
 
 
 class JobModelVideo(JobModelBase[VideoConfigurationSet]):
