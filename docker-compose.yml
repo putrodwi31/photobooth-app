@@ -1,0 +1,17 @@
+services:
+    photobooth_app_doc:
+        build: .
+        container_name: photobooth_app_doc
+        ports:
+            - "8015:8000"
+        environment:
+            - TZ=Asia/Jakarta
+        volumes:
+            # current working directory = data folder
+            - ./photobooth-data:/data
+        restart: unless-stopped
+
+        # DIBUTUHKAN hanya jika pakai DSLR via gphoto2
+        # privileged: true
+        # devices:
+        #  - /dev/bus/usb:/dev/bus/usb
