@@ -50,6 +50,26 @@ print(Path(rclone_api.__file__).resolve().parent.joinpath("bin"))
 PY
 )"
 
+GPHOTO2_PORT_DIR="$($PYTHON_BIN - <<'PY'
+from pathlib import Path
+
+try:
+    import gphoto2 as gp  # type: ignore
+except Exception:
+    print("")
+    raise SystemExit(0)
+
+root = Path(gp.__file__).resolve().parent
+candidates = sorted(root.rglob("libgphoto2_port"))
+if not candidates:
+    print("")
+    raise SystemExit(0)
+
+# Use the first matching libgphoto2_port directory.
+print(candidates[0])
+PY
+)"
+
 NUITKA_FLAGS=(
   --assume-yes-for-downloads
   --standalone
@@ -90,6 +110,12 @@ if [[ -n "$RCLONE_BIN_DIR" ]] && [[ -d "$RCLONE_BIN_DIR" ]]; then
   fi
 else
   echo "WARNING: rclone_api bin directory not found; rclone-based sync will fail." >&2
+fi
+
+if [[ -n "$GPHOTO2_PORT_DIR" ]] && [[ -d "$GPHOTO2_PORT_DIR" ]]; then
+  NUITKA_FLAGS+=(--include-data-dir="$GPHOTO2_PORT_DIR"=libgphoto2_port)
+else
+  echo "WARNING: libgphoto2_port (iolibs) directory not found; gphoto2 may fail." >&2
 fi
 
 if [[ "$ONEFILE" == "1" ]] || [[ "${1:-}" == "--onefile" ]]; then

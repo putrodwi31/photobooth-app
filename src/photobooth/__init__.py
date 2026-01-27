@@ -7,6 +7,15 @@ from shutil import rmtree
 # set locale to systems default
 locale.setlocale(locale.LC_ALL, "")
 
+# gphoto2: help libgphoto2 find iolibs/camlibs in frozen/onefile builds.
+_PKG_ROOT = Path(__file__).resolve().parents[1]
+_PORT_DIR = _PKG_ROOT.joinpath("libgphoto2_port")
+_CAMLIB_DIR = _PKG_ROOT.joinpath("libgphoto2")
+if _PORT_DIR.exists() and "GP_PORT_INFO_DIR" not in os.environ:
+    os.environ["GP_PORT_INFO_DIR"] = os.fsdecode(_PORT_DIR)
+if _CAMLIB_DIR.exists() and "GP_CAMLIB_DIR" not in os.environ:
+    os.environ["GP_CAMLIB_DIR"] = os.fsdecode(_CAMLIB_DIR)
+
 # database
 DATABASE_PATH = "./database/"
 # mediaitems cache for resized versions
@@ -61,15 +70,19 @@ def _copy_demo_assets_to_userdata():
 
     # In Nuitka onefile mode, the source lives in a temp dir that changes each run.
     # A previous link may become broken. If so, remove and recreate it.
+    is_junction = os.name == "nt" and hasattr(dst_path, "is_junction") and dst_path.is_junction()
     if dst_path.is_symlink():
         if dst_path.resolve(strict=False).exists():
             return
         dst_path.unlink(missing_ok=True)
-    elif os.name == "nt" and dst_path.is_junction():
+    elif is_junction:
         if dst_path.exists():
             return
         # Junction removal on Windows.
-        rmtree(dst_path, ignore_errors=True)
+        try:
+            os.rmdir(dst_path)
+        except OSError:
+            rmtree(dst_path, ignore_errors=True)
     if not os.path.lexists(dst_path):
         create_link(src_path, dst_path)
     else:
