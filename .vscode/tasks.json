@@ -20,6 +20,16 @@
       "label": "create openapi.json schema http api description",
       "type": "shell",
       "command": "uv run python -m photobooth.utils.fastapi_get_openapi"
+    },
+    {
+      "label": "build (nuitka standalone)",
+      "type": "shell",
+      "command": "ONEFILE=0 scripts/build_nuitka.sh"
+    },
+    {
+      "label": "build (nuitka onefile)",
+      "type": "shell",
+      "command": "ONEFILE=1 scripts/build_nuitka.sh --onefile"
     }
   ]
 }

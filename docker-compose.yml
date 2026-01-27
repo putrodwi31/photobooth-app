@@ -1,7 +1,7 @@
 services:
-    photobooth_app_doc:
+    photobooth_app:
         build: .
-        container_name: photobooth_app_doc
+        container_name: photobooth_app
         ports:
             - "8015:8000"
         environment:
@@ -9,6 +9,8 @@ services:
         volumes:
             # current working directory = data folder
             - ./photobooth-data:/data
+            - /mnt/pb_share/tmp:/tmp
+            - /mnt/pb_share/media:/opt/photobooth-app/media
         restart: unless-stopped
 
         # DIBUTUHKAN hanya jika pakai DSLR via gphoto2

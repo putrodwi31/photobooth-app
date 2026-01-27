@@ -147,7 +147,8 @@ dev = [
   "pyftpdlib~=2.0.0",  # limit to 2.0.x, since key.pem is not shipped in later versions
   "PyOpenSSL",         # for pyftplib to support FTPS during tests
   "poethepoet",
-  "wigglecam[node]"
+  "wigglecam[node]",
+  "nuitka>=2.6.6",
 ]
 
 

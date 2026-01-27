@@ -313,7 +313,7 @@ class GroupCameraWigglecam(BaseModelCamera):
 BackendsBase = GroupCameraVirtual | GroupCameraPyav | GroupCameraWigglecam
 BackendsLinux = GroupCameraPicamera2 | GroupCameraV4l2 | GroupCameraGphoto2 | GroupCameraDigicamcontrol
 BackendsWindows = GroupCameraDigicamcontrol
-BackendsDarwin = GroupCameraGphoto2
+BackendsDarwin = GroupCameraGphoto2 | GroupCameraDigicamcontrol
 if sys.platform == "win32":
     BackendsPlatform = BackendsBase | BackendsWindows
 elif sys.platform == "linux":

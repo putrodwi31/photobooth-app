@@ -39,6 +39,18 @@ You need inspiration first, have a look what others did:
 - [Example projects](https://photobooth-app.org/projects/)
 - [Find screenshots in the documentation](https://photobooth-app.org/screenshots)
 
+## 🧱 Build EXE With Nuitka
+
+This repository now includes a simple Nuitka build script at `scripts/build_nuitka.sh`.
+
+1. Ensure Nuitka is installed in your environment (for example: `uv sync --all-groups`).
+2. Build a standalone folder:
+   `scripts/build_nuitka.sh`
+3. Or build a single-file binary:
+   `ONEFILE=1 scripts/build_nuitka.sh --onefile`
+
+The output will be placed in `build/nuitka/`.
+
 ### ©️ License
 
 The software is licensed under the MIT license.
