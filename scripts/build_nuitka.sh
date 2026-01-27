@@ -78,8 +78,8 @@ NUITKA_FLAGS=(
 )
 
 if [[ "$IS_WINDOWS" == "1" ]]; then
-  # GCC (MinGW) on Windows is often much slower; prefer MSVC if available.
-  NUITKA_FLAGS+=(--msvc=latest)
+  # Stay on GCC/MinGW to avoid requiring MSVC Build Tools.
+  NUITKA_FLAGS+=(--mingw64)
 fi
 
 if [[ -n "$RCLONE_BIN_DIR" ]] && [[ -d "$RCLONE_BIN_DIR" ]]; then
