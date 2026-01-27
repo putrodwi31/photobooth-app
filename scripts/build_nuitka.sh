@@ -10,9 +10,11 @@ OS_NAME="${OS_NAME:-$(uname -s 2>/dev/null || echo unknown)}"
 case "$OS_NAME" in
   MINGW*|MSYS*|CYGWIN*|Windows_NT)
     DEFAULT_PYTHON_BIN=".venv/Scripts/python.exe"
+    IS_WINDOWS=1
     ;;
   *)
     DEFAULT_PYTHON_BIN=".venv/bin/python"
+    IS_WINDOWS=0
     ;;
 esac
 
@@ -29,23 +31,62 @@ fi
 
 mkdir -p "$OUT_DIR"
 
+if command -v getconf >/dev/null 2>&1; then
+  CPU_JOBS="$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4)"
+else
+  CPU_JOBS="${CPU_JOBS:-4}"
+fi
+
+RCLONE_BIN_DIR="$($PYTHON_BIN - <<'PY'
+from pathlib import Path
+
+try:
+    import rclone_api
+except Exception:
+    print("")
+    raise SystemExit(0)
+
+print(Path(rclone_api.__file__).resolve().parent.joinpath("bin"))
+PY
+)"
+
 NUITKA_FLAGS=(
   --assume-yes-for-downloads
   --standalone
-  --follow-imports
   --output-dir="$OUT_DIR"
   --output-filename=photobooth
-  --enable-plugin=numpy
-  --enable-plugin=multiprocessing
+  --jobs="$CPU_JOBS"
   --include-package=photobooth
   --include-package=web
+  --include-package=photobooth.plugins
+  --include-module=photobooth.plugins.commander.commander
+  --include-module=photobooth.plugins.gpio_lights.gpio_lights
+  --include-module=photobooth.plugins.wled.wled
+  --include-module=photobooth.plugins.filter_pilgram2.filter_pilgram2
+  --include-module=photobooth.plugins.synchronizer_legacy.synchronizer_legacy
+  --include-module=photobooth.plugins.synchronizer_rclone.synchronizer_rclone
+  --include-package=urllib3.contrib.resolver
+  --include-module=urllib3.contrib.resolver.system
+  --include-module=av.sidedata.encparams
   --include-package-data=photobooth
   --include-package-data=web
   --include-data-dir=assets=assets
+  --include-data-dir=src/photobooth/demoassets=photobooth/demoassets
   --include-data-files=src/photobooth/database/alembic/env.py=photobooth/database/alembic/env.py
   --include-data-files=src/photobooth/database/alembic/script.py.mako=photobooth/database/alembic/script.py.mako
-  --include-data-dir=src/photobooth/database/alembic/versions=photobooth/database/alembic/versions
+  --include-data-files=src/photobooth/database/alembic/versions/*.py=photobooth/database/alembic/versions/
 )
+
+if [[ "$IS_WINDOWS" == "1" ]]; then
+  # GCC (MinGW) on Windows is often much slower; prefer MSVC if available.
+  NUITKA_FLAGS+=(--msvc=latest)
+fi
+
+if [[ -n "$RCLONE_BIN_DIR" ]] && [[ -d "$RCLONE_BIN_DIR" ]]; then
+  NUITKA_FLAGS+=(--include-data-dir="$RCLONE_BIN_DIR"=rclone_api/bin)
+else
+  echo "WARNING: rclone_api bin directory not found; rclone-based sync will fail." >&2
+fi
 
 if [[ "$ONEFILE" == "1" ]] || [[ "${1:-}" == "--onefile" ]]; then
   NUITKA_FLAGS+=(--onefile)

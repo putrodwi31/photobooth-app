@@ -2,6 +2,7 @@ import locale
 import os
 import subprocess
 from pathlib import Path
+from shutil import rmtree
 
 # set locale to systems default
 locale.setlocale(locale.LC_ALL, "")
@@ -58,10 +59,19 @@ def _copy_demo_assets_to_userdata():
     src_path = Path(__file__).parent.resolve().joinpath("demoassets/userdata").absolute()
     dst_path = Path(USERDATA_PATH, "demoassets").absolute()
 
-    if not dst_path.exists():
+    # In Nuitka onefile mode, the source lives in a temp dir that changes each run.
+    # A previous link may become broken. If so, remove and recreate it.
+    if dst_path.is_symlink():
+        if dst_path.resolve(strict=False).exists():
+            return
+        dst_path.unlink(missing_ok=True)
+    elif os.name == "nt" and dst_path.is_junction():
+        if dst_path.exists():
+            return
+        # Junction removal on Windows.
+        rmtree(dst_path, ignore_errors=True)
+    if not os.path.lexists(dst_path):
         create_link(src_path, dst_path)
-    elif dst_path.is_symlink() or (os.name == "nt" and dst_path.is_junction()):
-        return
     else:
         raise RuntimeError(f"error setup demoassets, {dst_path} exists but is no symlink!")
 

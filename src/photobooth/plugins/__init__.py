@@ -109,6 +109,18 @@ pm.add_hookspecs(PluginMediacollectionSpec)
 ENTRY_POINT_GROUP = "photobooth11"  # see pyproject.toml section
 entry_points_app = entry_points(group=ENTRY_POINT_GROUP)
 included_plugins = [importlib.import_module(entry_point.value) for entry_point in entry_points_app]
+
+# Nuitka onefile builds may not expose entry point metadata. Fall back to built-in plugins.
+if not included_plugins:
+    builtin_plugins = [
+        "photobooth.plugins.commander.commander",
+        "photobooth.plugins.gpio_lights.gpio_lights",
+        "photobooth.plugins.wled.wled",
+        "photobooth.plugins.filter_pilgram2.filter_pilgram2",
+        "photobooth.plugins.synchronizer_legacy.synchronizer_legacy",
+        "photobooth.plugins.synchronizer_rclone.synchronizer_rclone",
+    ]
+    included_plugins = [importlib.import_module(module_name) for module_name in builtin_plugins]
 print(f"discovered {len(included_plugins)} plugins by entry point group '{ENTRY_POINT_GROUP}':  {[plugin.__name__ for plugin in included_plugins]}")
 
 # user plugins. additionally scan folder below working directlry for quick tinkering
