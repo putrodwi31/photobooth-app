@@ -6,7 +6,17 @@ set -euo pipefail
 #   scripts/build_nuitka.sh            # builds into ./build/nuitka
 #   scripts/build_nuitka.sh --onefile  # builds a single-file binary
 
-PYTHON_BIN="${PYTHON_BIN:-.venv/bin/python}"
+OS_NAME="${OS_NAME:-$(uname -s 2>/dev/null || echo unknown)}"
+case "$OS_NAME" in
+  MINGW*|MSYS*|CYGWIN*|Windows_NT)
+    DEFAULT_PYTHON_BIN=".venv/Scripts/python.exe"
+    ;;
+  *)
+    DEFAULT_PYTHON_BIN=".venv/bin/python"
+    ;;
+esac
+
+PYTHON_BIN="${PYTHON_BIN:-$DEFAULT_PYTHON_BIN}"
 OUT_DIR="${OUT_DIR:-build/nuitka}"
 ONEFILE="${ONEFILE:-0}"
 
@@ -24,6 +34,7 @@ NUITKA_FLAGS=(
   --standalone
   --follow-imports
   --output-dir="$OUT_DIR"
+  --output-filename=photobooth
   --enable-plugin=numpy
   --enable-plugin=multiprocessing
   --include-package=photobooth
@@ -31,6 +42,9 @@ NUITKA_FLAGS=(
   --include-package-data=photobooth
   --include-package-data=web
   --include-data-dir=assets=assets
+  --include-data-files=src/photobooth/database/alembic/env.py=photobooth/database/alembic/env.py
+  --include-data-files=src/photobooth/database/alembic/script.py.mako=photobooth/database/alembic/script.py.mako
+  --include-data-dir=src/photobooth/database/alembic/versions=photobooth/database/alembic/versions
 )
 
 if [[ "$ONEFILE" == "1" ]] || [[ "${1:-}" == "--onefile" ]]; then
