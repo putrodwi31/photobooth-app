@@ -87,10 +87,15 @@ NUITKA_FLAGS=(
   --include-module=photobooth.plugins.synchronizer_rclone.synchronizer_rclone
   --include-package=urllib3.contrib.resolver
   --include-module=urllib3.contrib.resolver.system
+  --include-package=urllib3.contrib.hface.protocols
+  --include-module=urllib3.contrib.hface.protocols.http1
+  --include-module=urllib3.contrib.hface.protocols.http2
   --include-module=av.sidedata.encparams
   --include-package-data=photobooth
   --include-package-data=web
   --include-data-dir=assets=assets
+  --include-data-dir=src/web/frontend=web/frontend
+  --include-data-dir=src/web/sharepage=web/sharepage
   --include-data-dir=src/photobooth/demoassets=photobooth/demoassets
   --include-data-files=src/photobooth/database/alembic/env.py=photobooth/database/alembic/env.py
   --include-data-files=src/photobooth/database/alembic/script.py.mako=photobooth/database/alembic/script.py.mako
