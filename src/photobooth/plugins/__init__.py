@@ -120,7 +120,13 @@ if not included_plugins:
         "photobooth.plugins.synchronizer_legacy.synchronizer_legacy",
         "photobooth.plugins.synchronizer_rclone.synchronizer_rclone",
     ]
-    included_plugins = [importlib.import_module(module_name) for module_name in builtin_plugins]
+    loaded_plugins = []
+    for module_name in builtin_plugins:
+        try:
+            loaded_plugins.append(importlib.import_module(module_name))
+        except Exception as exc:
+            print(f"skipping builtin plugin '{module_name}' due to import error: {exc}")
+    included_plugins = loaded_plugins
 print(f"discovered {len(included_plugins)} plugins by entry point group '{ENTRY_POINT_GROUP}':  {[plugin.__name__ for plugin in included_plugins]}")
 
 # user plugins. additionally scan folder below working directlry for quick tinkering

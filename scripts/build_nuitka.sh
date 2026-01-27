@@ -83,7 +83,11 @@ if [[ "$IS_WINDOWS" == "1" ]]; then
 fi
 
 if [[ -n "$RCLONE_BIN_DIR" ]] && [[ -d "$RCLONE_BIN_DIR" ]]; then
-  NUITKA_FLAGS+=(--include-data-dir="$RCLONE_BIN_DIR"=rclone_api/bin)
+  if [[ "$IS_WINDOWS" == "1" ]] && [[ -f "$RCLONE_BIN_DIR/rclone.exe" ]]; then
+    NUITKA_FLAGS+=(--include-data-files="$RCLONE_BIN_DIR/rclone.exe"=rclone_api/bin/rclone.exe)
+  else
+    NUITKA_FLAGS+=(--include-data-dir="$RCLONE_BIN_DIR"=rclone_api/bin)
+  fi
 else
   echo "WARNING: rclone_api bin directory not found; rclone-based sync will fail." >&2
 fi
