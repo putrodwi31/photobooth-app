@@ -1,8 +1,9 @@
 import locale
 import os
 import subprocess
+import sys
 from pathlib import Path
-from shutil import rmtree
+from shutil import copytree, rmtree
 
 # set locale to systems default
 locale.setlocale(locale.LC_ALL, "")
@@ -68,9 +69,28 @@ def _copy_demo_assets_to_userdata():
     src_path = Path(__file__).parent.resolve().joinpath("demoassets/userdata").absolute()
     dst_path = Path(USERDATA_PATH, "demoassets").absolute()
 
+    def is_frozen_build() -> bool:
+        return bool(getattr(sys, "frozen", False) or globals().get("__compiled__", False))
+
     # In Nuitka onefile mode, the source lives in a temp dir that changes each run.
     # A previous link may become broken. If so, remove and recreate it.
     is_junction = os.name == "nt" and hasattr(dst_path, "is_junction") and dst_path.is_junction()
+
+    if is_frozen_build():
+        if dst_path.is_symlink():
+            dst_path.unlink(missing_ok=True)
+        elif is_junction:
+            try:
+                os.rmdir(dst_path)
+            except OSError:
+                rmtree(dst_path, ignore_errors=True)
+        if dst_path.exists():
+            return
+        if not src_path.exists():
+            raise RuntimeError(f"error setup demoassets, {src_path} does not exist!")
+        copytree(src_path, dst_path)
+        return
+
     if dst_path.is_symlink():
         if dst_path.resolve(strict=False).exists():
             return
