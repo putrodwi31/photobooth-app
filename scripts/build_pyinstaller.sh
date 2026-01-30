@@ -45,6 +45,9 @@ add_data_arg() {
   if [[ "$src" != /* ]] && [[ ! "$src" =~ ^[A-Za-z]: ]]; then
     abs_src="${PROJECT_ROOT}/${src}"
   fi
+  if [[ "$IS_WINDOWS" == "1" ]]; then
+    abs_src="$(to_windows_path "$abs_src")"
+  fi
   PYI_ARGS+=(--add-data "${abs_src}${DATA_SEP}${dst}")
 }
 
@@ -55,7 +58,24 @@ add_binary_arg() {
   if [[ "$src" != /* ]] && [[ ! "$src" =~ ^[A-Za-z]: ]]; then
     abs_src="${PROJECT_ROOT}/${src}"
   fi
+  if [[ "$IS_WINDOWS" == "1" ]]; then
+    abs_src="$(to_windows_path "$abs_src")"
+  fi
   PYI_ARGS+=(--add-binary "${abs_src}${DATA_SEP}${dst}")
+}
+
+to_windows_path() {
+  local path_in="$1"
+  if command -v cygpath >/dev/null 2>&1; then
+    cygpath -w "$path_in"
+    return
+  fi
+  if [[ "$path_in" =~ ^/([a-zA-Z])/(.*) ]]; then
+    local drive="${BASH_REMATCH[1]^}"
+    local rest="${BASH_REMATCH[2]}"
+    path_in="${drive}:/${rest}"
+  fi
+  echo "${path_in//\//\\}"
 }
 
 RCLONE_BIN_DIR="$($PYTHON_BIN - <<'PY'
