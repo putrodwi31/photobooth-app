@@ -63,6 +63,18 @@ If you prefer faster iteration times, there is a PyInstaller build script at `sc
 
 The output will be placed in `build/pyinstaller/`.
 
+## 🪟 Windows Installer (Inno Setup)
+
+Two installer templates are provided:
+
+- PyInstaller: `installer/photobooth_pyinstaller.iss`
+- Nuitka: `installer/photobooth_nuitka.iss`
+
+Steps:
+1. Build the binary (PyInstaller or Nuitka).
+2. Open the matching `.iss` in Inno Setup Compiler and build.
+3. Installer output will be in `build/installer/`.
+
 ### ©️ License
 
 The software is licensed under the MIT license.

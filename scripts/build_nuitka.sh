@@ -95,6 +95,7 @@ NUITKA_FLAGS=(
   --output-dir="$OUT_DIR"
   --output-filename=photobooth
   --jobs="$CPU_JOBS"
+  --windows-icon-from-ico=src/web/frontend/favicon.ico
   --include-package=photobooth
   --include-package=web
   --include-package=photobooth.plugins

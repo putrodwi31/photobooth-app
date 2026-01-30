@@ -118,6 +118,7 @@ PYI_ARGS=(
   --distpath "$OUT_DIR/dist"
   --workpath "$OUT_DIR/build"
   --specpath "$OUT_DIR/spec"
+  --icon "$PROJECT_ROOT/src/web/frontend/favicon.ico"
 )
 
 if [[ "$ONEFILE" == "1" ]] || [[ "${1:-}" == "--onefile" ]]; then
