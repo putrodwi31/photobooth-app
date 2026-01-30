@@ -51,6 +51,18 @@ This repository now includes a simple Nuitka build script at `scripts/build_nuit
 
 The output will be placed in `build/nuitka/`.
 
+## ⚡️ Fast Dev Build With PyInstaller
+
+If you prefer faster iteration times, there is a PyInstaller build script at `scripts/build_pyinstaller.sh`.
+
+1. Ensure PyInstaller is installed in your environment (for example: `uv sync --all-groups`).
+2. Build a standalone folder:
+   `scripts/build_pyinstaller.sh`
+3. Or build a single-file binary:
+   `ONEFILE=1 scripts/build_pyinstaller.sh --onefile`
+
+The output will be placed in `build/pyinstaller/`.
+
 ### ©️ License
 
 The software is licensed under the MIT license.
