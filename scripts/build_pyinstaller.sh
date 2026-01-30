@@ -21,7 +21,8 @@ esac
 PYTHON_BIN="${PYTHON_BIN:-$DEFAULT_PYTHON_BIN}"
 OUT_DIR="${OUT_DIR:-build/pyinstaller}"
 ONEFILE="${ONEFILE:-0}"
-PROJECT_ROOT="$(pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd -P)"
 
 if [[ ! -x "$PYTHON_BIN" ]]; then
   echo "Python interpreter not found at: $PYTHON_BIN" >&2
