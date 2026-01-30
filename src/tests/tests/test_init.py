@@ -26,7 +26,7 @@ def test_main_instance_create_dirs_permission_errorreraised_stops_starting_app()
             __import__("photobooth.__init__")
 
 
-def test_init_error_if_demoassets_is_no_symlink():
+def test_init_error_if_demoassets_is_not_directory():
     target = Path(USERDATA_PATH, "demoassets")
     target.unlink(missing_ok=True)
 
@@ -39,14 +39,11 @@ def test_init_error_if_demoassets_is_no_symlink():
     target.unlink(missing_ok=False)
 
 
-def test_init_userdata_after_init_there_is_demoassets_symlink():
+def test_init_userdata_after_init_there_is_demoassets_directory():
     target = Path(USERDATA_PATH, "demoassets")
     target.unlink(missing_ok=True)
 
-    # starting the app creates the symlink
+    # starting the app creates the directory copy
     __import__("photobooth.__init__")
 
-    if os.name == "nt":
-        assert target.is_junction()
-    else:
-        assert target.is_symlink()
+    assert target.is_dir()

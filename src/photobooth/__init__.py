@@ -1,6 +1,5 @@
 import locale
 import os
-import subprocess
 import sys
 from pathlib import Path
 from shutil import copytree, rmtree
@@ -53,19 +52,6 @@ def _create_basic_folders():
 
 
 def _copy_demo_assets_to_userdata():
-    def create_link(src_path: Path, dst_path: Path):
-        # https://discuss.python.org/t/add-os-junction-pathlib-path-junction-to/50394
-
-        if os.name == "nt":
-            cmd = ["mklink", "/j", os.fsdecode(dst_path), os.fsdecode(src_path)]
-            # mklink junction no need for privileges on win systems.
-
-            proc = subprocess.run(cmd, shell=True, capture_output=True)
-            if proc.returncode:
-                raise OSError(proc.stderr.decode().strip())
-        else:
-            os.symlink(src_path, dst_path, target_is_directory=True)
-
     src_path = Path(__file__).parent.resolve().joinpath("demoassets/userdata").absolute()
     dst_path = Path(USERDATA_PATH, "demoassets").absolute()
 
@@ -91,22 +77,22 @@ def _copy_demo_assets_to_userdata():
         copytree(src_path, dst_path)
         return
 
-    if dst_path.is_symlink():
-        if dst_path.resolve(strict=False).exists():
-            return
-        dst_path.unlink(missing_ok=True)
-    elif is_junction:
-        if dst_path.exists():
-            return
-        # Junction removal on Windows.
+    if dst_path.is_symlink() or is_junction:
+        # replace links with a real directory copy
         try:
-            os.rmdir(dst_path)
+            if dst_path.is_symlink():
+                dst_path.unlink(missing_ok=True)
+            else:
+                os.rmdir(dst_path)
         except OSError:
             rmtree(dst_path, ignore_errors=True)
-    if not os.path.lexists(dst_path):
-        create_link(src_path, dst_path)
-    else:
-        raise RuntimeError(f"error setup demoassets, {dst_path} exists but is no symlink!")
+
+    if dst_path.exists():
+        if dst_path.is_dir():
+            return
+        raise RuntimeError(f"error setup demoassets, {dst_path} exists but is not a directory!")
+
+    copytree(src_path, dst_path)
 
 
 try:

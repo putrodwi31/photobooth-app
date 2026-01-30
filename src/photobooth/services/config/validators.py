@@ -17,7 +17,7 @@ def contextual_serializer_password(value: Any, info: SerializationInfo):
 
 def ensure_demoassets(value: Any) -> Any:
     """
-    added in v6 after FilePath checking introduced and demoassets are symlinked to userdata
+    added in v6 after FilePath checking introduced and demoassets are provided under userdata
     it tries to find the file in demoassets and if so returns an updated value.
     """
     if not value or value == "":
