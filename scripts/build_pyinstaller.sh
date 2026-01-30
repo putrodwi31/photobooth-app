@@ -135,6 +135,8 @@ PYI_ARGS+=(
   --hidden-import photobooth.plugins.synchronizer_rclone.synchronizer_rclone
   --hidden-import urllib3.contrib.resolver
   --hidden-import urllib3.contrib.resolver.system
+  --collect-submodules photobooth.services.backends
+  --collect-data photobooth.services.backends
 )
 
 add_data_arg "assets" "assets"
