@@ -216,19 +216,35 @@ class DigicamcontrolBackend(AbstractBackend):
                         raise RuntimeError("finally failed after waiting for capture to complete!")
 
                     # success
-                    # wait until file is readable to avoid PermissionError on Windows
+                    # wait until file is readable to avoid PermissionError on Windows.
+                    # if it stays locked, fallback to download via HTTP.
+                    readable = False
+                    last_exc: Exception | None = None
                     for attempt in range(20):
                         try:
                             if not captured_filepath.exists():
                                 raise FileNotFoundError(f"capture file not found yet: {captured_filepath}")
                             with captured_filepath.open("rb") as file_handle:
                                 file_handle.read(1)
+                            readable = True
                             break
                         except (PermissionError, FileNotFoundError) as exc:
+                            last_exc = exc
                             logger.warning(f"capture file not ready, retrying. {attempt=}, error: {exc}")
                             time.sleep(0.2)
-                    else:
-                        raise TimeoutError("capture file not readable yet")
+
+                    if not readable:
+                        captured_basename = Path(captured_name).name
+                        try:
+                            r = session.get(f"{self._config.base_url}/image/{urllib.parse.quote(captured_basename)}")
+                            r.raise_for_status()
+                            fallback_path = Path(tmp_dir, captured_basename)
+                            fallback_path.write_bytes(r.content)
+                            captured_filepath = fallback_path
+                            logger.info("capture file locked; downloaded via HTTP fallback")
+                        except Exception as exc:
+                            logger.critical(f"capture file not readable and HTTP fallback failed: {exc}")
+                            raise TimeoutError("capture file not readable yet") from (last_exc or exc)
 
                     with self._hires_data.condition:
                         self._hires_data.filepath = captured_filepath
