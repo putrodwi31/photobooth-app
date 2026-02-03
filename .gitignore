@@ -12,6 +12,7 @@
 /plugins
 /venv
 /build
+/installer/build/*
 
 
 # python files

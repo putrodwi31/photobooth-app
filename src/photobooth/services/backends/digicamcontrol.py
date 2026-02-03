@@ -57,6 +57,8 @@ class DigicamcontrolBackend(AbstractBackend):
 
         self._enabled_liveview: bool = False
         self._lores_data: GeneralBytesResult = GeneralBytesResult(data=b"", condition=Condition())
+        self._capture_in_progress: bool = False
+        self._capture_triggered_at: float | None = None
 
     def start(self):
         super().start()
@@ -147,25 +149,35 @@ class DigicamcontrolBackend(AbstractBackend):
             if self._hires_data.request.is_set():
                 logger.debug("triggered capture")
 
+                capture_completed = False
+                clear_request = True
                 try:
                     # capture request, afterwards read file to buffer
                     tmp_dir = tempfile.gettempdir()
 
-                    logger.info(f"requesting digicamcontrol to store files to {tmp_dir=}")
+                    if not self._capture_in_progress:
+                        logger.info(f"requesting digicamcontrol to store files to {tmp_dir=}")
 
-                    r = session.get(
-                        f"{self._config.base_url}/?slc=set&param1=session.folder&param2={urllib.parse.quote(tmp_dir, safe='')}"  # noqa: E501
-                    )
-                    if r.text != "OK":
-                        # text = r.text if (not r.headers.get("Content-Type") == "image/jpeg") else "IMAGE-data removed"
-                        raise RuntimeError(f"error setting directory, status_code {r.status_code}, text: {r.text}")
-                    r.raise_for_status()
+                        r = session.get(
+                            f"{self._config.base_url}/?slc=set&param1=session.folder&param2={urllib.parse.quote(tmp_dir, safe='')}"  # noqa: E501
+                        )
+                        if r.text != "OK":
+                            # text = r.text if (not r.headers.get("Content-Type") == "image/jpeg") else "IMAGE-data removed"
+                            raise RuntimeError(f"error setting directory, status_code {r.status_code}, text: {r.text}")
+                        r.raise_for_status()
 
-                    r = session.get(f"{self._config.base_url}/?slc=capture&param1=&param2=")
-                    r.raise_for_status()
-                    if r.text != "OK":
-                        # text = r.text if (not r.headers.get("Content-Type") == "image/jpeg") else "IMAGE-data removed"
-                        raise RuntimeError(f"error capture, digicamcontrol exception, status_code {r.status_code}, text: {r.text}")
+                        r = session.get(f"{self._config.base_url}/?slc=capture&param1=&param2=")
+                        r.raise_for_status()
+                        if r.text != "OK":
+                            # text = r.text if (not r.headers.get("Content-Type") == "image/jpeg") else "IMAGE-data removed"
+                            raise RuntimeError(
+                                f"error capture, digicamcontrol exception, status_code {r.status_code}, text: {r.text}"
+                            )
+
+                        self._capture_in_progress = True
+                        self._capture_triggered_at = time.monotonic()
+                    else:
+                        logger.debug("capture already in progress; skip re-triggering")
 
                     for attempt in range(10):
                         try:
@@ -193,21 +205,39 @@ class DigicamcontrolBackend(AbstractBackend):
                             continue
 
                     else:
-                        # we failed finally all the attempts - deal with the consequences.
-                        logger.critical("finally failed after 10 attempts to capture image!")
-                        raise RuntimeError("finally failed after 10 attempts to capture image!")
+                        # still not ready - avoid re-triggering shutter, wait longer up to a limit
+                        max_wait_seconds = 15.0
+                        elapsed = 0.0
+                        if self._capture_triggered_at is not None:
+                            elapsed = time.monotonic() - self._capture_triggered_at
+                        if elapsed < max_wait_seconds:
+                            raise TimeoutError("capture still processing, retry later without re-trigger")
+                        logger.critical("finally failed after waiting for capture to complete!")
+                        raise RuntimeError("finally failed after waiting for capture to complete!")
 
                     # success
                     with self._hires_data.condition:
                         self._hires_data.filepath = captured_filepath
                         self._hires_data.condition.notify_all()
+                    capture_completed = True
 
+                except TimeoutError as exc:
+                    clear_request = False
+                    logger.warning(f"capture not ready yet, will retry without re-triggering. {exc}")
                 except Exception as exc:
                     logger.critical(f"error capture! check logs for errors. {exc}")
+                    self._capture_in_progress = False
+                    self._capture_triggered_at = None
 
                 finally:
-                    # only capture one pic and return to lores streaming afterwards
-                    self._hires_data.request.clear()
+                    if capture_completed:
+                        self._capture_in_progress = False
+                        self._capture_triggered_at = None
+                    if clear_request:
+                        # only capture one pic and return to lores streaming afterwards
+                        self._hires_data.request.clear()
+                    else:
+                        time.sleep(0.2)
 
             else:
                 # one time enable liveview
