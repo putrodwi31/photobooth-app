@@ -216,6 +216,20 @@ class DigicamcontrolBackend(AbstractBackend):
                         raise RuntimeError("finally failed after waiting for capture to complete!")
 
                     # success
+                    # wait until file is readable to avoid PermissionError on Windows
+                    for attempt in range(20):
+                        try:
+                            if not captured_filepath.exists():
+                                raise FileNotFoundError(f"capture file not found yet: {captured_filepath}")
+                            with captured_filepath.open("rb") as file_handle:
+                                file_handle.read(1)
+                            break
+                        except (PermissionError, FileNotFoundError) as exc:
+                            logger.warning(f"capture file not ready, retrying. {attempt=}, error: {exc}")
+                            time.sleep(0.2)
+                    else:
+                        raise TimeoutError("capture file not readable yet")
+
                     with self._hires_data.condition:
                         self._hires_data.filepath = captured_filepath
                         self._hires_data.condition.notify_all()
