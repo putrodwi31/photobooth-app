@@ -264,7 +264,17 @@ class AbstractBackend(ResilientService, ABC):
         while True:
             try:
                 filepath = self._wait_for_still_file()
-                self.rotate_jpeg_by_exif_flag(filepath, self._orientation)
+                # On Windows, the capture file can remain locked briefly. Retry EXIF update
+                # without re-triggering the capture.
+                for rotate_attempt in range(1, 11):
+                    try:
+                        self.rotate_jpeg_by_exif_flag(filepath, self._orientation)
+                        break
+                    except PermissionError as exc:
+                        if rotate_attempt >= 10:
+                            raise
+                        logger.warning(f"capture file locked during EXIF update, retrying. {rotate_attempt=}, error: {exc}")
+                        time.sleep(0.2)
                 return filepath
             except Exception as exc:
                 attempt += 1
@@ -307,14 +317,16 @@ class AbstractBackend(ResilientService, ABC):
                 img = self.rotate_jpeg_by_exif_flag(img_bytes, self._orientation)
                 return img
             except TimeoutError as exc:
-                if self.is_started():
+                if self.is_running():
                     logger.debug(f"lores timeout {attempt=}/{retries} {index_subdevice=}")
                     continue
-                else:
-                    logger.debug("device not alive any more, stopping early lores image delivery.")
-                    raise StopIteration from exc
+                logger.debug("device not running, stopping early lores image delivery.")
+                raise StopIteration from exc
             except Exception as exc:
-                # other exceptions fail immediately
+                # other exceptions fail immediately unless service is not running
+                if not self.is_running():
+                    logger.debug("device not running, stopping early lores image delivery.")
+                    raise StopIteration from exc
                 logger.warning(f"device raised exception (maybe lost connection to device?) {exc}")
                 raise exc
 

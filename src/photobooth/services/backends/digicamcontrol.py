@@ -255,9 +255,15 @@ class DigicamcontrolBackend(AbstractBackend):
                     clear_request = False
                     logger.warning(f"capture not ready yet, will retry without re-triggering. {exc}")
                 except Exception as exc:
-                    logger.critical(f"error capture! check logs for errors. {exc}")
-                    self._capture_in_progress = False
-                    self._capture_triggered_at = None
+                    if self._capture_in_progress:
+                        # Guard: if a capture is already in progress, never re-trigger.
+                        # Retry in next loop iteration instead.
+                        clear_request = False
+                        logger.warning(f"capture not ready yet, will retry without re-triggering. {exc}")
+                    else:
+                        logger.critical(f"error capture! check logs for errors. {exc}")
+                        self._capture_in_progress = False
+                        self._capture_triggered_at = None
 
                 finally:
                     if capture_completed:
