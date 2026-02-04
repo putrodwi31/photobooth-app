@@ -272,7 +272,7 @@ class AbstractBackend(ResilientService, ABC):
                         break
                     except OSError as exc:
                         # Windows may raise OSError(22) or sharing violations while file is still being written.
-                        if exc.errno not in (13, 22, 32) or rotate_attempt >= 10:
+                        if exc.errno not in (13, 22, 32) or rotate_attempt >= 20:
                             raise
                         logger.warning(f"capture file not ready during EXIF update, retrying. {rotate_attempt=}, error: {exc}")
                         time.sleep(0.2)
