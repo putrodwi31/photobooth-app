@@ -118,10 +118,25 @@ class AcquisitionService(BaseService):
             raise ConnectionRefusedError
 
         logger.debug(f"gen_stream start {index_device=} {index_subdevice=}")
+        backend = self._backends[index_device]
+        waiting_for_backend = False
         while self.is_running():
             try:
-                output_jpeg_bytes = self._backends[index_device].wait_for_lores_image(index_subdevice=index_subdevice)
+                output_jpeg_bytes = backend.wait_for_lores_image(index_subdevice=index_subdevice)
+                waiting_for_backend = False
             except StopIteration:
+                # backend not running; wait a bit for reconnect to avoid client reconnect storms
+                if self.is_running() and backend.is_started():
+                    if not waiting_for_backend:
+                        logger.info("gen_stream waiting for backend to reconnect")
+                        waiting_for_backend = True
+                    t_start = time.monotonic()
+                    while self.is_running() and backend.is_started() and not backend.is_running():
+                        if time.monotonic() - t_start > 10:
+                            break
+                        time.sleep(0.5)
+                    if backend.is_running():
+                        continue
                 logger.debug("gen_stream stop: backend stopped")
                 return  # if backend is stopped but still requesting stream, StopIteration is sent when device is not alive any more
             except Exception as exc:
