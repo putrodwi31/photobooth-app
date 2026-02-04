@@ -270,10 +270,11 @@ class AbstractBackend(ResilientService, ABC):
                     try:
                         self.rotate_jpeg_by_exif_flag(filepath, self._orientation)
                         break
-                    except PermissionError as exc:
-                        if rotate_attempt >= 10:
+                    except OSError as exc:
+                        # Windows may raise OSError(22) or sharing violations while file is still being written.
+                        if exc.errno not in (13, 22, 32) or rotate_attempt >= 10:
                             raise
-                        logger.warning(f"capture file locked during EXIF update, retrying. {rotate_attempt=}, error: {exc}")
+                        logger.warning(f"capture file not ready during EXIF update, retrying. {rotate_attempt=}, error: {exc}")
                         time.sleep(0.2)
                 return filepath
             except Exception as exc:
