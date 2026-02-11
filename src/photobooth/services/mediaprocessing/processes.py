@@ -165,7 +165,15 @@ def process_and_generate_collage(files_in: list[Path], mediaitem: Mediaitem):
 
     ## create mediaitem
     canvas = canvas.convert("RGB") if canvas.mode in ("RGBA", "P") else canvas
-    encode([canvas], mediaitem.unprocessed)
+    encode(
+        [canvas],
+        mediaitem.unprocessed,
+        format_options={
+            "quality": 100,
+            "subsampling": 0,
+            "optimize": False,
+        },
+    )
     # complete processed version (unprocessed and processed are same here for this one)
     shutil.copy2(mediaitem.unprocessed, mediaitem.processed)
 

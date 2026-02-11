@@ -16,11 +16,19 @@ FORMAT_OPTIONS = {
 }
 
 
-def __pil_img_save(images: list[Image.Image], file_out: Path, durations: int | list[int] | tuple[int, ...] | None = None):
+def __pil_img_save(
+    images: list[Image.Image],
+    file_out: Path,
+    durations: int | list[int] | tuple[int, ...] | None = None,
+    format_options: dict | None = None,
+):
     try:
-        format_params = FORMAT_OPTIONS[file_out.suffix.lower()]
+        format_params = FORMAT_OPTIONS[file_out.suffix.lower()].copy()
     except KeyError as exc:
         raise RuntimeError(f"Unsupported format: {file_out.suffix}") from exc
+
+    if format_options:
+        format_params.update(format_options)
 
     sequence_params = {}
     if len(images) > 1:
@@ -80,11 +88,16 @@ def __pyav_mp4_save(images: list[Image.Image], file_out: Path, duration: int):
     container.close()
 
 
-def encode(images: list[Image.Image], file_out: Path, durations: int | list[int] | tuple[int, ...] | None = None):
+def encode(
+    images: list[Image.Image],
+    file_out: Path,
+    durations: int | list[int] | tuple[int, ...] | None = None,
+    format_options: dict | None = None,
+):
     save_to_format = file_out.suffix.lower()
 
     if save_to_format in FORMAT_OPTIONS.keys():
-        __pil_img_save(images, file_out, durations)
+        __pil_img_save(images, file_out, durations, format_options)
     elif save_to_format == ".mp4":
         if type(durations) is not int:
             raise ValueError("save mp4 needs a fixed duration")
