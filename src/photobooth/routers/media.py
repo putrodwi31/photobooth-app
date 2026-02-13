@@ -21,9 +21,17 @@ def _serve_media_item(mediaitem_id: UUID, dimension: DimensionTypes):
         headers = {"Cache-Control": "max-age=86400"}
 
         item = container.mediacollection_service.get_item(mediaitem_id)
-        cacheditem = container.mediacollection_service.cache.get_cached_repr(item, dimension, processed=True)
 
-        return FileResponse(cacheditem.filepath, status_code=status.HTTP_200_OK, headers=headers)
+        # Serve full resolution directly to avoid quality loss from resize/re-encode.
+        if dimension == DimensionTypes.full:
+            filepath = item.processed
+            if not filepath.is_file():
+                raise FileNotFoundError(f"cannot find file representation of mediaitem by id {mediaitem_id}: {filepath}")
+        else:
+            cacheditem = container.mediacollection_service.cache.get_cached_repr(item, dimension, processed=True)
+            filepath = cacheditem.filepath
+
+        return FileResponse(filepath, status_code=status.HTTP_200_OK, headers=headers)
 
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=f"cannot find mediaitem by id {mediaitem_id}") from exc
